@@ -12,12 +12,12 @@ from pynput.keyboard import Controller as KeyboardController
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Variables for screen capture
+# screen config
 frame_rate = 10
 scale = 1.0
 mouse = MouseController()
 keyboard = KeyboardController()
-screen_width, screen_height = 1920, 1080  # Default values, set to actual resolution
+screen_width, screen_height = 1920, 1080  # resolution, WILL FIX WITH GUI LAUNCHER
 
 @app.route("/")
 def index():
@@ -46,7 +46,7 @@ def capture_screen():
 @socketio.on('mouse_event')
 def handle_mouse_event(data):
     try:
-        # Scale client coordinates to server screen dimensions
+        # scale client screen with server screen
         x = int(data['x'] / 100 * screen_width)
         y = int(data['y'] / 100 * screen_height)
         if data['type'] == 'move':
