@@ -9,7 +9,7 @@
 </p>
 
 <p alight="center2">
-# Duckstop
+Duckstop
 </p>
 
 ## Easy simple Remote Desktop program made in Python
