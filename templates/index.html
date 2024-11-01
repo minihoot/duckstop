@@ -27,12 +27,12 @@
     <script>
     const socket = io();
 
-    // Display received screen
+    // display receiver
     socket.on('screen_update', data => {
         document.getElementById('screen').src = 'data:image/jpeg;base64,' + data.img;
     });
 
-    // Mouse control
+    // mouse input
     document.getElementById('screen').addEventListener('mousemove', e => {
         const rect = e.target.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
