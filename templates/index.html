@@ -27,12 +27,12 @@
     <script>
     const socket = io();
 
-    // display receiver
+    // Display receiver
     socket.on('screen_update', data => {
         document.getElementById('screen').src = 'data:image/jpeg;base64,' + data.img;
     });
 
-    // mouse input
+    // Mouse input
     document.getElementById('screen').addEventListener('mousemove', e => {
         const rect = e.target.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -40,10 +40,14 @@
         socket.emit('mouse_event', { type: 'move', x, y });
     });
 
-    document.getElementById('screen').addEventListener('click', e => {
-        socket.emit('mouse_event', { type: 'click' });
+    // Left and right click handling
+    document.getElementById('screen').addEventListener('mousedown', e => {
+        const clickType = e.button === 2 ? 'right_click' : 'left_click'; // 2 = right click, others = left click
+        socket.emit('mouse_event', { type: clickType });
     });
-</script>
 
+    // Prevent default right-click menu
+    document.getElementById('screen').addEventListener('contextmenu', e => e.preventDefault());
+    </script>
 </body>
 </html>
