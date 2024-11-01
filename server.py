@@ -13,7 +13,7 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # screen config
-frame_rate = 10
+frame_rate = 30
 scale = 1.0
 mouse = MouseController()
 keyboard = KeyboardController()
@@ -28,7 +28,7 @@ def capture_screen():
     with mss() as sct:
         monitor = sct.monitors[1]
         screen_width, screen_height = monitor["width"], monitor["height"]
-        
+
         while True:
             start_time = time.time()
             sct_img = sct.grab(monitor)
@@ -49,10 +49,12 @@ def handle_mouse_event(data):
         # scale client screen with server screen
         x = int(data['x'] / 100 * screen_width)
         y = int(data['y'] / 100 * screen_height)
-        if data['type'] == 'move':
-            mouse.position = (x, y)
-        elif data['type'] == 'click':
+        mouse.position = (x, y)
+
+        if data['type'] == 'left_click':
             mouse.click(Button.left)
+        elif data['type'] == 'right_click':
+            mouse.click(Button.right)
     except Exception as e:
         print("Mouse event error:", e)
 
