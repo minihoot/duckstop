@@ -178,6 +178,19 @@
             });
         }
     });
+	// Add this after the contextmenu event listener and before the settings handlers
+	screen.addEventListener('wheel', e => {
+		e.preventDefault(); // Prevent the page from scrolling
+		const coords = getScaledCoordinates(e);
+		if (coords) {
+		    socket.emit('mouse_event', {
+		        type: 'scroll',
+		        deltaY: e.deltaY > 0 ? -1 : 1, // Normalize scroll direction
+		        deltaX: e.deltaX > 0 ? -1 : 1, // For horizontal scrolling
+		        ...coords
+		    });
+		}
+	}, { passive: false }); // Required for preventDefault() to work
 
     screen.addEventListener('mousedown', e => {
         const coords = getScaledCoordinates(e);

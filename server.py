@@ -8,7 +8,14 @@ from mss import mss
 from PIL import Image
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key, KeyCode
-from pynput.keyboard._win32 import KeyCode as WinKeyCode  # For Windows special keys
+import pyaudio
+import wave
+import numpy as np
+import audioop
+
+# Add these to your existing imports
+from queue import Queue
+import struct
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -70,12 +77,12 @@ def get_key_from_code(key_code):
         'Enter': Key.enter,
         'Backspace': Key.backspace,
         'Tab': Key.tab,
-        'ShiftLeft': Key.shift_l,
-        'ShiftRight': Key.shift_r,
-        'ControlLeft': Key.ctrl_l,
-        'ControlRight': Key.ctrl_r,
-        'AltLeft': Key.alt_l,
-        'AltRight': Key.alt_r,
+        'ShiftLeft': Key.shift,
+        'ShiftRight': Key.shift,
+        'ControlLeft': Key.ctrl,
+        'ControlRight': Key.ctrl,
+        'AltLeft': Key.alt,
+        'AltRight': Key.alt,
         'CapsLock': Key.caps_lock,
         'Escape': Key.esc,
         'Delete': Key.delete,
@@ -117,3 +124,76 @@ def handle_keyboard_event(data):
 def handle_special_combo(data):
     try:
         combo = data.get('combo')
+        if combo == 'ctrl_alt_del':
+            # For Linux, we might want to simulate Ctrl+Alt+Backspace or another combination
+            keyboard.press(Key.ctrl)
+            keyboard.press(Key.alt)
+            keyboard.press(Key.delete)
+            time.sleep(0.1)
+            keyboard.release(Key.delete)
+            keyboard.release(Key.alt)
+            keyboard.release(Key.ctrl)
+            
+    except Exception as e:
+        print(f"Special key combo error: {e}")
+
+@socketio.on('mouse_event')
+def handle_mouse_event(data):
+    try:
+        event_type = data.get('type')
+        
+        if event_type == 'scroll':
+            # Convert percentage coordinates to actual screen coordinates
+            x = int((data.get('x', 0) / 100) * screen_width)
+            y = int((data.get('y', 0) / 100) * screen_height)
+            
+            # Move mouse to position before scrolling
+            mouse.position = (x, y)
+            
+            # Perform scroll action
+            deltaY = data.get('deltaY', 0)
+            deltaX = data.get('deltaX', 0)
+            
+            # Vertical scrolling
+            if deltaY != 0:
+                mouse.scroll(0, deltaY)
+            
+            # Horizontal scrolling (if supported)
+            if deltaX != 0:
+                mouse.scroll(deltaX, 0)
+                
+        elif event_type == 'move':
+            # Existing move handling code...
+            x = int((data.get('x', 0) / 100) * screen_width)
+            y = int((data.get('y', 0) / 100) * screen_height)
+            mouse.position = (x, y)
+            
+        elif event_type in ['down', 'up']:
+            # Existing click handling code...
+            button = data.get('button', 0)
+            button_map = {
+                0: Button.left,
+                1: Button.middle,
+                2: Button.right
+            }
+            if button in button_map:
+                if event_type == 'down':
+                    mouse.press(button_map[button])
+                else:
+                    mouse.release(button_map[button])
+                    
+    except Exception as e:
+        print(f"Mouse event error: {e}")
+@socketio.on('set_frame_rate')
+def set_frame_rate(data):
+    global frame_rate
+    frame_rate = max(1, min(30, int(data.get('frame_rate', 10))))
+
+@socketio.on('set_resolution')
+def set_resolution(data):
+    global scale
+    scale = max(0.1, min(1.0, float(data.get('scale', 1.0))))
+
+if __name__ == "__main__":
+    threading.Thread(target=capture_screen, daemon=True).start()
+    socketio.run(app, host="0.0.0.0", port=5000)
