@@ -7,12 +7,13 @@ from flask_socketio import SocketIO, emit
 from mss import mss
 from PIL import Image
 from pynput.mouse import Controller as MouseController, Button
-from pynput.keyboard import Controller as KeyboardController
+from pynput.keyboard import Controller as KeyboardController, Key, KeyCode
+from pynput.keyboard._win32 import KeyCode as WinKeyCode  # For Windows special keys
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# screen config
+# Controllers
 frame_rate = 30
 scale = 1.0
 mouse = MouseController()
@@ -62,51 +63,57 @@ def capture_screen():
                 print(f"Screen capture error: {e}")
                 time.sleep(1)
 
-@socketio.on('mouse_event')
-def handle_mouse_event(data):
-    try:
-        event_type = data.get('type')
-        
-        # Handle mouse position updates
-        if 'x' in data and 'y' in data:
-            x = int(data['x'] * screen_width / 100)
-            y = int(data['y'] * screen_height / 100)
-            x = max(0, min(x, screen_width))
-            y = max(0, min(y, screen_height))
-            mouse.position = (x, y)
-        
-        # Handle mouse button events
-        if event_type == 'down':
-            button = Button.right if data.get('button') == 2 else Button.left
-            mouse.press(button)
-        elif event_type == 'up':
-            button = Button.right if data.get('button') == 2 else Button.left
-            mouse.release(button)
-            
-    except Exception as e:
-        print(f"Mouse event error: {e}")
+def get_key_from_code(key_code):
+    # Map of common key codes to pynput keys
+    key_map = {
+        'Space': Key.space,
+        'Enter': Key.enter,
+        'Backspace': Key.backspace,
+        'Tab': Key.tab,
+        'ShiftLeft': Key.shift_l,
+        'ShiftRight': Key.shift_r,
+        'ControlLeft': Key.ctrl_l,
+        'ControlRight': Key.ctrl_r,
+        'AltLeft': Key.alt_l,
+        'AltRight': Key.alt_r,
+        'CapsLock': Key.caps_lock,
+        'Escape': Key.esc,
+        'Delete': Key.delete,
+    }
+    
+    if key_code in key_map:
+        return key_map[key_code]
+    elif key_code.startswith('Key'):
+        # Handle regular keys (KeyA, KeyB, etc.)
+        return KeyCode.from_char(key_code[-1].lower())
+    elif key_code.startswith('Digit'):
+        # Handle number keys
+        return KeyCode.from_char(key_code[-1])
+    else:
+        # Try to handle any other keys
+        try:
+            return KeyCode.from_char(key_code[-1].lower())
+        except:
+            print(f"Unable to map key: {key_code}")
+            return None
 
 @socketio.on('keyboard_event')
 def handle_keyboard_event(data):
     try:
-        key, action = data.get('key'), data.get('action')
-        if action == 'press':
-            keyboard.press(key)
-        elif action == 'release':
-            keyboard.release(key)
+        key_code = data.get('key')
+        action = data.get('action')
+        
+        key = get_key_from_code(key_code)
+        if key:
+            if action == 'press':
+                keyboard.press(key)
+            elif action == 'release':
+                keyboard.release(key)
+                
     except Exception as e:
         print(f"Keyboard event error: {e}")
 
-@socketio.on('set_frame_rate')
-def set_frame_rate(data):
-    global frame_rate
-    frame_rate = max(1, min(30, int(data.get('frame_rate', 10))))
-
-@socketio.on('set_resolution')
-def set_resolution(data):
-    global scale
-    scale = max(0.1, min(1.0, float(data.get('scale', 1.0))))
-
-if __name__ == "__main__":
-    threading.Thread(target=capture_screen, daemon=True).start()
-    socketio.run(app, host="0.0.0.0", port=5000)
+@socketio.on('special_key_combo')
+def handle_special_combo(data):
+    try:
+        combo = data.get('combo')
