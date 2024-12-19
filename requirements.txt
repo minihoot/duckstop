@@ -1,6 +1,6 @@
-Flask==2.3.3
-Flask-SocketIO==5.3.4
-mss==9.0.1
-Pillow==10.0.0
-pynput==1.7.6
-python-socketio==5.8.0
+Flask==3.1.0
+Flask-SocketIO==5.5.0
+mss==10.0.0
+Pillow==11.0.0
+pynput==1.7.7
+python-socketio==5.12.0
