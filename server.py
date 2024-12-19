@@ -8,14 +8,6 @@ from mss import mss
 from PIL import Image
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key, KeyCode
-import pyaudio
-import wave
-import numpy as np
-import audioop
-
-# Add these to your existing imports
-from queue import Queue
-import struct
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -71,7 +63,7 @@ def capture_screen():
                 time.sleep(1)
 
 def get_key_from_code(key_code):
-    # Map of common key codes to pynput keys
+    # Enhanced map of key codes to pynput keys
     key_map = {
         'Space': Key.space,
         'Enter': Key.enter,
@@ -86,20 +78,29 @@ def get_key_from_code(key_code):
         'CapsLock': Key.caps_lock,
         'Escape': Key.esc,
         'Delete': Key.delete,
+        # Add more special keys
+        'ArrowUp': Key.up,
+        'ArrowDown': Key.down,
+        'ArrowLeft': Key.left,
+        'ArrowRight': Key.right,
+        'Home': Key.home,
+        'End': Key.end,
+        'PageUp': Key.page_up,
+        'PageDown': Key.page_down,
     }
     
     if key_code in key_map:
         return key_map[key_code]
     elif key_code.startswith('Key'):
-        # Handle regular keys (KeyA, KeyB, etc.)
-        return KeyCode.from_char(key_code[-1].lower())
+        # Handle regular letter keys (KeyA, KeyB, etc.)
+        return key_code[-1].lower()
     elif key_code.startswith('Digit'):
         # Handle number keys
-        return KeyCode.from_char(key_code[-1])
+        return key_code[-1]
     else:
-        # Try to handle any other keys
         try:
-            return KeyCode.from_char(key_code[-1].lower())
+            # Handle any other character keys
+            return key_code[-1].lower()
         except:
             print(f"Unable to map key: {key_code}")
             return None

@@ -11,14 +11,18 @@
 <p></p>
 - [x] Mouse input with drag
 <p></p>
-- [ ] Scrolling
+- [x] Scrolling
 <p></p>
-- [ ] Mouse capture applications (3D based games that lock the mouse)
+- [~] Mouse capture applications (3D based games that lock the mouse)
 <p></p>
-- [ ] Clipboard
+- [N] Clipboard
 <p></p>
-- [ ] Desktop client
+- [N] Desktop client
 <p></p>
+
+N = Next
+~ = Dont know is possible
 
 <h1>About:</h1>
 <p>Duckstop is what i'd call a remote desktop protocol of its own written in python that has a very functional web client at the moment, This project was originally going to be a simple little project but i have expanded on it and with the help of LeGamermc i was able to get most of the inputs working, </p>
+
