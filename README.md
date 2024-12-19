@@ -21,6 +21,7 @@
 <p></p>
 
 N = Next
+<p></p>
 ~ = Dont know is possible
 
 <h1>About:</h1>
