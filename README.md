@@ -6,6 +6,10 @@
 
 <h1>Features:</h1>
 - [x] Basic display functionality
+&nbsp;
 - [x] Keybord input
+&nbsp;
 - [x] Mouse input with drag
+&nbsp;
+- [ ] Scrolling
 
