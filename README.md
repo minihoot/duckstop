@@ -25,4 +25,4 @@ N = Next
 
 <h1>About:</h1>
 <p>Duckstop is what i'd call a remote desktop protocol of its own written in python that has a very functional web client at the moment, This project was originally going to be a simple little project but i have expanded on it and with the help of LeGamermc i was able to get most of the inputs working, </p>
-
+<p><strong>WARNING: if you plan on using the web ui please make sure on the argument to start the webserver to type on the end --webui</strong><p>
