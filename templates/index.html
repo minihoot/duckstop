@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Desktop</title>
+    <title>Duckstop - Remote Desktop</title>
+	<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
     <style>
         /* Previous styles remain unchanged */
@@ -13,32 +14,32 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
-		a {
-			text-decoration: none;
-			color: purple;
-			position: relative;
-			transition: color 0.3s ease;
-		}
+        a {
+            text-decoration: none;
+            color: purple;
+            position: relative;
+            transition: color 0.3s ease;
+        }
 
-		a:hover {
-		   color: #9b59b6; /* Vibrant purple color for the underline */
-		}
+        a:hover {
+        color: #9b59b6; /* Vibrant purple color for the underline */
+        }
 
-		a::after {
-			content: '';
-			position: absolute;
-			bottom: 0;
-			left: 0;
-			width: 0;
-			background-color: purple;
-			height: 2px;
-			transition: width 0.3s ease;
-		}
+        a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            background-color: purple;
+            height: 2px;
+            transition: width 0.3s ease;
+        }
 
-		a:hover::after {
-			width: 100%;
-			color: purple;
-		}
+        a:hover::after {
+            width: 100%;
+            color: purple;
+        }
         body {
             overflow: hidden;
             background: #1a1a1a;
@@ -204,26 +205,89 @@
             color: #888;
         }
 
-        .connection-status {
-            position: fixed;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 8px 16px;
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            border-radius: 4px;
-            z-index: 2000;
-            display: none;
-        }
+		.connection-status {
+			position: fixed;
+			top: 60px;
+			left: 50%;
+			transform: translateX(-50%) translateY(-20px); /* Start slightly above */
+			padding: 8px 16px;
+			background: rgba(255, 0, 0, 0.8);
+			color: white;
+			border-radius: 4px;
+			z-index: 2000;
+			opacity: 0; /* Hidden by default */
+			transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth animation */
+		}
 
-        .connection-status.visible {
-            display: block;
-        }
+		.connection-status.visible {
+			display: block;
+			transform: translateX(-50%) translateY(0); /* Slide into place */
+			opacity: 1; /* Fade in */
+		}
+
+        /* Updated sliding key indicators */
+		.sliding-keys-container {
+			position: fixed;
+			top: 48px; /* Match top-bar height */
+			left: 50%;
+			transform: translateX(-50%);
+			display: flex;
+			gap: 4px;
+			z-index: 9000;
+			pointer-events: none;
+		}
+
+		.sliding-key {
+            background: #2ecc71;
+            border-color: #27ae60;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+			color: white;
+			padding: 12px 22px;
+			font-size: 12px;
+			border-radius: 4px;
+			transform: translateY(-100%);
+			transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			opacity: 0;
+			z-index: 9000;
+			position: absolute;
+			left: 0;
+		}
+
+		.sliding-key.active {
+			transform: translateY(20px);
+			opacity: 1;
+		}
+
+		.sliding-key.shift-left {
+			transform: translateY(20px) translateX(-110%);
+		}
+		.logo-container {
+			position: absolute;
+			left: 0;  /* Aligns it to the left edge of the screen */
+			padding-left: 10px;
+			display: flex;
+			align-items: center;  /* Vertically centers the logo and text */
+		}
+		.logo-image {
+			max-width: 34px;
+			max-height: 34px;
+			border-radius: 5px;
+		}
+		.logo-text {
+			color: purple;
+			padding-left: 10px;
+		}
     </style>
 </head>
 <body>
+
+    <div class="sliding-keys-container" id="slidingKeysContainer"></div>
     <div class="top-bar">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='favicon.png') }}" alt="Duckstop Logo" class="logo-image">
+            <span class="logo-text"><strong>Duckstop</strong></span>
+        </div>
         <button class="menu-button" id="settingsBtn">Settings</button>
         <button class="menu-button" id="exitBtn">Exit</button>
     </div>
@@ -260,189 +324,331 @@
             <button id="alt_key">Alt</button>
         </div>
         <div id="performance-stats">
-            <div>Latency: <span id="latency">0</span>ms</div>
-            <div>Frame Time: <span id="frame_time">0</span>ms</div>
+            <div>Latency: <span id="latency">N/A </span>ms</div>
+            <div>Frame Time: <span id="frame_time">N/A </span>ms</div>
             <div>Connection Status: <span id="connection_status">Connected</span></div>
-			<br>
-			<p>Made by <strong>aarongamingdev</strong> and <strong>LeGamer</strong> <a style="text-decoration: none; color: purple;" href="https://github.com/aarongamingdev/duckstop">here</a></p>
+            <br>
+            <p>Made by <strong>aarongamingdev</strong> and <strong>LeGamer</strong> <a style="text-decoration: none; color: purple;" href="https://github.com/aarongamingdev/duckstop">here</a></p>
         </div>
     </div>
 
     <script>
-	let socket;
-	const screen = document.getElementById('screen');
-	let originalWidth = 0;
-	let originalHeight = 0;
-	let isDragging = false;
-	let pressedKeys = new Set();
-	let lastFrameTimestamp = 0;
-	let lastRequestTime = 0;
-	let frameRequestPending = false;
-	let connectionTimeout;
-	let reconnectAttempts = 0;
-	const MAX_RECONNECT_ATTEMPTS = 5;
-	const RECONNECT_DELAY = 1000;
-	const CONNECTION_TIMEOUT = 2000;
+    let socket;
+    const screen = document.getElementById('screen');
+    let originalWidth = 0;
+    let originalHeight = 0;
+    let isDragging = false;
+    let pressedKeys = new Set();
+    let lastFrameTimestamp = 0;
+    let lastRequestTime = 0;
+    let frameRequestPending = false;
+    let connectionTimeout;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    const RECONNECT_DELAY = 1000;
+    const CONNECTION_TIMEOUT = 2000;
     let ctrlPressed = false;
     let altPressed = false;
     const ctrlButton = document.getElementById('ctrl_key');
     const altButton = document.getElementById('alt_key');
     const keyIndicator = document.getElementById('keyIndicator');
+	let isDisconnected = false; // A flag to track if we've disconnected
 
-	function resetViewState() {
-		screen.src = '';
-		originalWidth = 0;
-		originalHeight = 0;
-		isDragging = false;
-		pressedKeys.clear();
-		lastFrameTimestamp = 0;
-		lastRequestTime = 0;
-		frameRequestPending = false;
-	}
+        let activeKeys = new Set();
+        const slidingKeysContainer = document.getElementById('slidingKeysContainer');
 
-	function initializeSocket() {
-		if (socket) {
-		    socket.close();
-		    socket = null;
-		}
+        function createOrUpdateKeyIndicator(keyName) {
+            let keyElement = document.querySelector(`[data-key="${keyName}"]`);
+            
+            if (!keyElement) {
+                keyElement = document.createElement('div');
+                keyElement.className = 'sliding-key';
+                keyElement.setAttribute('data-key', keyName);
+                keyElement.textContent = keyName;
+                slidingKeysContainer.appendChild(keyElement);
 
-		socket = io({
-		    reconnection: false,  // We'll handle reconnection manually
-		    timeout: CONNECTION_TIMEOUT
-		});
+                // Force a reflow
+                keyElement.offsetHeight;
+                
+                // If there's already an active key, shift it left
+                const existingActive = slidingKeysContainer.querySelector('.sliding-key.active:not([data-key="' + keyName + '"])');
+                if (existingActive) {
+                    existingActive.classList.add('shift-left');
+                }
+            }
+            
+            // Add active class after a small delay to ensure animation plays
+            requestAnimationFrame(() => {
+                keyElement.classList.add('active');
+            });
+        }
 
-		socket.on('connect', () => {
-		    console.log('Connected to server');
-		    document.getElementById('connection_status').textContent = 'Connected';
-		    document.getElementById('connectionStatus').classList.remove('visible');
-		    resetViewState();
-		    requestFrame();
-		});
+        function removeKeyIndicator(keyName) {
+            const keyElement = document.querySelector(`[data-key="${keyName}"]`);
+            if (keyElement) {
+                keyElement.classList.remove('active');
+                
+                // Remove element after animation
+                setTimeout(() => {
+                    if (keyElement && keyElement.parentNode) {
+                        keyElement.remove();
+                        
+                        // If there's a shifted key, move it back to center
+                        const shiftedKey = slidingKeysContainer.querySelector('.sliding-key.shift-left');
+                        if (shiftedKey) {
+                            shiftedKey.classList.remove('shift-left');
+                        }
+                    }
+                }, 300);
+            }
+        }
 
-		socket.on('disconnect', () => {
-		    console.log('Disconnected from server');
-		    document.getElementById('connection_status').textContent = 'Disconnected';
-		    document.getElementById('connectionStatus').classList.add('visible');
-		    handleDisconnection();
-		});
+        // Updated keyboard event listeners
+        document.addEventListener('keydown', (e) => {
+			if (socket && socket.connected && !isDisconnected) {
+		        let keyName = '';
+		        
+		        // Map key codes to display names
+		        switch (e.code) {
+		            case 'ControlLeft':
+		            case 'ControlRight':
+		                keyName = 'CTRL';
+		                break;
+		            case 'AltLeft':
+		            case 'AltRight':
+		                keyName = 'ALT';
+		                break;
+		        }
 
-		socket.on('connect_error', (error) => {
-		    console.error('Connection error:', error);
-		    handleDisconnection();
-		});
+		        if (keyName && !activeKeys.has(keyName)) {
+		            activeKeys.add(keyName);
+		            createOrUpdateKeyIndicator(keyName);
+		        }
 
-		socket.on('frame_ready', handleFrameReady);
-		socket.on('screen_update', handleScreenUpdate);
+		        // Prevent default browser shortcuts
+		        if (e.key !== 'F5' && e.key !== 'F12') {
+		            e.preventDefault();
+		        }
+			}
+        });
 
-		socket.on('pong', () => {
-		    clearTimeout(connectionTimeout);
-		});
-	}
-	function resetConnectionState() {
-		if (socket) {
-		    socket.close();
-		    socket = null;
-		}
-		clearTimeout(connectionTimeout);
-		reconnectAttempts = 0;
-	}
-	function handleDisconnection() {
-		resetViewState();
-		
-		if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-		    // Increment the counter before showing the message
-		    reconnectAttempts++;
-		    
-		    // Update status message with current attempt
-		    document.getElementById('connectionStatus').textContent = 
-		        `Reconnecting... Attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`;
-		    document.getElementById('connectionStatus').classList.add('visible');
-		    
+        document.addEventListener('keyup', (e) => {
+            let keyName = '';
+            
+            switch (e.code) {
+                case 'ControlLeft':
+                case 'ControlRight':
+                    keyName = 'CTRL';
+                    break;
+                case 'AltLeft':
+                case 'AltRight':
+                    keyName = 'ALT';
+                    break;
+            }
+
+            if (keyName) {
+                activeKeys.delete(keyName);
+                removeKeyIndicator(keyName);
+            }
+        });
+
+        // Handle window blur to clear all active keys
+        window.addEventListener('blur', () => {
+            activeKeys.forEach(keyName => {
+                removeKeyIndicator(keyName);
+            });
+            activeKeys.clear();
+        });
+
+
+    function resetViewState() {
+        screen.src = '';
+        originalWidth = 0;
+        originalHeight = 0;
+        isDragging = false;
+        pressedKeys.clear();
+        lastFrameTimestamp = 0;
+        lastRequestTime = 0;
+        frameRequestPending = false;
+    }
+
+    function initializeSocket() {
+        if (socket) {
+            socket.close();
+            socket = null;
+        }
+
+        socket = io({
+            reconnection: false,  // We'll handle reconnection manually
+            timeout: CONNECTION_TIMEOUT
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            document.getElementById('connection_status').textContent = 'Connected';
+            document.getElementById('connectionStatus').classList.remove('visible');
+            resetViewState();
+            requestFrame();
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            document.getElementById('connection_status').textContent = 'Disconnected';
+            document.getElementById('connectionStatus').classList.add('visible');
+            handleDisconnection();
+        });
+
+        socket.on('connect_error', (error) => {
+            document.getElementById('connection_status').textContent = 'Disconnected';
+            document.getElementById('connectionStatus').classList.add('visible');
+            console.error('Connection error:', error);
+            handleDisconnection();
+        });
+
+        socket.on('frame_ready', handleFrameReady);
+        socket.on('screen_update', handleScreenUpdate);
+
+        socket.on('pong', () => {
+            clearTimeout(connectionTimeout);
+        });
+    }
+    function resetConnectionState() {
+        if (socket) {
+            socket.close();
+            socket = null;
+        }
+        clearTimeout(connectionTimeout);
+        reconnectAttempts = 0;
+    }
+
+	function clearAllKeyIndicators() {
+		const activeIndicators = document.querySelectorAll('.sliding-key');
+		activeIndicators.forEach(indicator => {
+		    indicator.classList.remove('active', 'shift-left');
 		    setTimeout(() => {
-		        console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
-		        // Create new socket connection
-		        socket = null;  // Ensure old socket is cleared
-		        initializeSocket();
-		    }, RECONNECT_DELAY);
-		} else {
-		    document.getElementById('connectionStatus').textContent = 
-		        'Connection failed. Please refresh the page.';
-		    document.getElementById('connectionStatus').classList.add('visible');
-		}
-	}
-
-
-	function monitorConnection() {
-		clearTimeout(connectionTimeout);
-		connectionTimeout = setTimeout(() => {
-		    console.log('Connection timeout - forcing refresh');
-		    if (socket.connected) {
-		        socket.disconnect();
-		    }
-		    resetViewState();
-		    initializeSocket();
-		}, CONNECTION_TIMEOUT);
-	}
-
-	function handleFrameReady(data) {
-		if (data.timestamp > lastFrameTimestamp) {
-		    requestFrame();
-		}
-	}
-
-	function handleScreenUpdate(data) {
-		const receiveTime = performance.now();
-		const latency = receiveTime - lastRequestTime;
-		
-		if (data && data.img) {
-		    screen.src = 'data:image/jpeg;base64,' + data.img;
-		    if (!originalWidth && data.width) {
-		        originalWidth = data.width;
-		        originalHeight = data.height;
-		    }
-		    
-		    lastFrameTimestamp = data.timestamp;
-		    frameRequestPending = false;
-		    
-		    const frameTime = performance.now() - receiveTime;
-		    updatePerformanceStats(latency, frameTime);
-		    
-		    clearTimeout(connectionTimeout);
-		    
-		    setTimeout(requestFrame, 1000 / parseInt(document.getElementById('frame_rate').value));
-		} else {
-		    console.error('Invalid screen update data received');
-		    frameRequestPending = false;
-		    setTimeout(requestFrame, 1000);
-		}
-	}
-
-	function requestFrame() {
-		if (frameRequestPending || !socket || !socket.connected) return;
-		
-		frameRequestPending = true;
-		lastRequestTime = performance.now();
-		
-		socket.emit('request_frame', {
-		    quality: parseInt(document.getElementById('quality').value),
-		    scale: parseFloat(document.getElementById('resolution').value),
-		    timestamp: lastFrameTimestamp
+		        if (indicator && indicator.parentNode) {
+		            indicator.remove();
+		        }
+		    }, 300);
 		});
-
-		monitorConnection();
+		activeKeys.clear();
 	}
 
-	// Start everything up
-	initializeSocket();
+
+    function handleDisconnection() {
+   		if (isDisconnected) {
+		    document.getElementById('connectionStatus').textContent =
+		            'Connection successfully closed!';
+			const connectionStatusElement = document.getElementById('connectionStatus');	
+			connectionStatusElement.style.background = 'rgba(0, 169, 224, 0.8)';
+		    document.getElementById('connectionStatus').classList.add('visible');
+ 			screen.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+            clearAllKeyIndicators();
+    	} else {
+		    resetViewState();
+		    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+		        // Increment the counter before showing the message
+		        reconnectAttempts++;
+
+		        // Update status message with current attempt
+		        document.getElementById('connectionStatus').textContent =
+		            `Reconnecting... Attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`;
+		        document.getElementById('connectionStatus').classList.add('visible');
+
+		        setTimeout(() => {
+		            console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+		            // Create new socket connection
+		            socket = null;  // Ensure old socket is cleared
+		            initializeSocket();
+		        }, RECONNECT_DELAY);
+		    } else {
+		        document.getElementById('connectionStatus').textContent =
+		            'Connection failed. Please refresh the page.';
+		        document.getElementById('connectionStatus').classList.add('visible');
+            	clearAllKeyIndicators();
+		    }
+		}
+    }
+
+
+    function monitorConnection() {
+        clearTimeout(connectionTimeout);
+        connectionTimeout = setTimeout(() => {
+            console.log('Connection timeout - forcing refresh');
+            if (socket.connected) {
+                socket.disconnect();
+            }
+            resetViewState();
+            initializeSocket();
+        }, CONNECTION_TIMEOUT);
+    }
+
+    function handleFrameReady(data) {
+        if (data.timestamp > lastFrameTimestamp) {
+            requestFrame();
+        }
+    }
+
+    function handleScreenUpdate(data) {
+        const receiveTime = performance.now();
+        const latency = receiveTime - lastRequestTime;
+
+        if (data && data.img) {
+            screen.src = 'data:image/jpeg;base64,' + data.img;
+            if (!originalWidth && data.width) {
+                originalWidth = data.width;
+                originalHeight = data.height;
+            }
+
+            lastFrameTimestamp = data.timestamp;
+            frameRequestPending = false;
+
+            const frameTime = performance.now() - receiveTime;
+            updatePerformanceStats(latency, frameTime);
+
+            clearTimeout(connectionTimeout);
+
+            setTimeout(requestFrame, 1000 / parseInt(document.getElementById('frame_rate').value));
+        } else {
+            console.error('Invalid screen update data received');
+            frameRequestPending = false;
+            setTimeout(requestFrame, 1000);
+        }
+    }
+
+    function requestFrame() {
+        if (frameRequestPending || !socket || !socket.connected) return;
+
+        frameRequestPending = true;
+        lastRequestTime = performance.now();
+
+        socket.emit('request_frame', {
+            quality: parseInt(document.getElementById('quality').value),
+            scale: parseFloat(document.getElementById('resolution').value),
+            timestamp: lastFrameTimestamp
+        });
+
+        monitorConnection();
+    }
+
+    // Start everything up
+    initializeSocket();
 
     // [Previous event handlers and UI code remain unchanged]
     document.getElementById('settingsBtn').addEventListener('click', () => {
         document.getElementById('settingsPanel').classList.toggle('open');
     });
 
-    document.getElementById('exitBtn').addEventListener('click', () => {
-        window.close();
-    });
+	document.getElementById('exitBtn').addEventListener('click', () => {
+		if (socket && socket.connected) {
+        	isDisconnected = true;
+		    socket.disconnect();
+
+		    // Prevent any further reconnection
+		    socket = null
+		}
+	});
+
 
     // [Previous mouse and keyboard event handlers remain unchanged]
     function updatePerformanceStats(latency, frameTime) {
@@ -468,99 +674,99 @@
     });
 
     // [Previous mouse and keyboard event handlers remain unchanged]
-	function getScaledCoordinates(e) {
-		const rect = screen.getBoundingClientRect();
-		if (!rect.width || !rect.height) return null;
+    function getScaledCoordinates(e) {
+        const rect = screen.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
 
-		// Get the actual screen container dimensions
-		const screenContainer = document.querySelector('.screen-container');
-		const containerRect = screenContainer.getBoundingClientRect();
+        // Get the actual screen container dimensions
+        const screenContainer = document.querySelector('.screen-container');
+        const containerRect = screenContainer.getBoundingClientRect();
 
-		// Calculate the screen's display size while maintaining aspect ratio
-		const screenAspectRatio = originalWidth / originalHeight;
-		const containerAspectRatio = containerRect.width / containerRect.height;
+        // Calculate the screen's display size while maintaining aspect ratio
+        const screenAspectRatio = originalWidth / originalHeight;
+        const containerAspectRatio = containerRect.width / containerRect.height;
 
-		let displayWidth, displayHeight, offsetX, offsetY;
+        let displayWidth, displayHeight, offsetX, offsetY;
 
-		if (containerAspectRatio > screenAspectRatio) {
-		    // Container is wider than needed
-		    displayHeight = containerRect.height;
-		    displayWidth = displayHeight * screenAspectRatio;
-		    offsetX = (containerRect.width - displayWidth) / 2;
-		    offsetY = 0;
-		} else {
-		    // Container is taller than needed
-		    displayWidth = containerRect.width;
-		    displayHeight = displayWidth / screenAspectRatio;
-		    offsetX = 0;
-		    offsetY = (containerRect.height - displayHeight) / 2;
-		}
+        if (containerAspectRatio > screenAspectRatio) {
+            // Container is wider than needed
+            displayHeight = containerRect.height;
+            displayWidth = displayHeight * screenAspectRatio;
+            offsetX = (containerRect.width - displayWidth) / 2;
+            offsetY = 0;
+        } else {
+            // Container is taller than needed
+            displayWidth = containerRect.width;
+            displayHeight = displayWidth / screenAspectRatio;
+            offsetX = 0;
+            offsetY = (containerRect.height - displayHeight) / 2;
+        }
 
-		// Calculate mouse position relative to the actual displayed screen
-		const mouseX = e.clientX - (containerRect.left + offsetX);
-		const mouseY = e.clientY - (containerRect.top + offsetY);
+        // Calculate mouse position relative to the actual displayed screen
+        const mouseX = e.clientX - (containerRect.left + offsetX);
+        const mouseY = e.clientY - (containerRect.top + offsetY);
 
-		// Convert to percentage
-		const percentX = (mouseX / displayWidth) * 100;
-		const percentY = (mouseY / displayHeight) * 100;
+        // Convert to percentage
+        const percentX = (mouseX / displayWidth) * 100;
+        const percentY = (mouseY / displayHeight) * 100;
 
-		// Check if mouse is within bounds
-		if (percentX >= 0 && percentX <= 100 && percentY >= 0 && percentY <= 100) {
-		    return {
-		        x: Math.min(Math.max(percentX, 0), 100),
-		        y: Math.min(Math.max(percentY, 0), 100)
-		    };
-		}
-		return null;
-	}
+        // Check if mouse is within bounds
+        if (percentX >= 0 && percentX <= 100 && percentY >= 0 && percentY <= 100) {
+            return {
+                x: Math.min(Math.max(percentX, 0), 100),
+                y: Math.min(Math.max(percentY, 0), 100)
+            };
+        }
+        return null;
+    }
 
-	// Update the mouse event listeners to ensure proper coordinate handling
-	screen.addEventListener('mousemove', e => {
-		const coords = getScaledCoordinates(e);
-		if (coords && socket.connected) {
-		    socket.emit('mouse_event', {
-		        type: 'move',
-		        ...coords,
-		        dragging: isDragging
-		    });
-		}
-	});
-	screen.addEventListener('mousedown', e => {
-		const coords = getScaledCoordinates(e);
-		if (coords && socket.connected) {
-		    isDragging = true;
-		    socket.emit('mouse_event', {
-		        type: 'down',
-		        button: e.button,
-		        ...coords
-		    });
-		}
-	});
+    // Update the mouse event listeners to ensure proper coordinate handling
+    screen.addEventListener('mousemove', e => {
+        const coords = getScaledCoordinates(e);
+        if (coords && socket.connected) {
+            socket.emit('mouse_event', {
+                type: 'move',
+                ...coords,
+                dragging: isDragging
+            });
+        }
+    });
+    screen.addEventListener('mousedown', e => {
+        const coords = getScaledCoordinates(e);
+        if (coords && socket.connected) {
+            isDragging = true;
+            socket.emit('mouse_event', {
+                type: 'down',
+                button: e.button,
+                ...coords
+            });
+        }
+    });
 
-	screen.addEventListener('mouseup', e => {
-		const coords = getScaledCoordinates(e);
-		if (coords && socket.connected) {
-		    isDragging = false;
-		    socket.emit('mouse_event', {
-		        type: 'up',
-		        button: e.button,
-		        ...coords
-		    });
-		}
-	});
+    screen.addEventListener('mouseup', e => {
+        const coords = getScaledCoordinates(e);
+        if (coords && socket.connected) {
+            isDragging = false;
+            socket.emit('mouse_event', {
+                type: 'up',
+                button: e.button,
+                ...coords
+            });
+        }
+    });
 
-	screen.addEventListener('wheel', e => {
-		e.preventDefault();
-		const coords = getScaledCoordinates(e);
-		if (coords && socket.connected) {
-		    socket.emit('mouse_event', {
-		        type: 'scroll',
-		        deltaY: e.deltaY > 0 ? -1 : 1,
-		        deltaX: e.deltaX > 0 ? -1 : 1,
-		        ...coords
-		    });
-		}
-	}, { passive: false });
+    screen.addEventListener('wheel', e => {
+        e.preventDefault();
+        const coords = getScaledCoordinates(e);
+        if (coords && socket.connected) {
+            socket.emit('mouse_event', {
+                type: 'scroll',
+                deltaY: e.deltaY > 0 ? -1 : 1,
+                deltaX: e.deltaX > 0 ? -1 : 1,
+                ...coords
+            });
+        }
+    }, { passive: false });
 
         function updateKeyIndicator() {
             const activeKeys = [];
@@ -568,7 +774,6 @@
             if (altPressed) activeKeys.push('ALT');
             
             if (activeKeys.length > 0) {
-                keyIndicator.textContent = `Active: ${activeKeys.join(' + ')}`;
                 keyIndicator.classList.add('visible');
             } else {
                 keyIndicator.classList.remove('visible');
@@ -692,17 +897,17 @@
             updateKeyIndicator();
         });
 
-	window.addEventListener('resize', () => {
-		// Update screen dimensions if needed
-		if (originalWidth && originalHeight) {
-		    const screenContainer = document.querySelector('.screen-container');
-		    const containerRect = screenContainer.getBoundingClientRect();
-		    
-		    // Trigger any necessary updates to maintain proper scaling
-		    screen.style.maxWidth = '100%';
-		    screen.style.maxHeight = '100%';
-		}
-	});
+    window.addEventListener('resize', () => {
+        // Update screen dimensions if needed
+        if (originalWidth && originalHeight) {
+            const screenContainer = document.querySelector('.screen-container');
+            const containerRect = screenContainer.getBoundingClientRect();
+
+            // Trigger any necessary updates to maintain proper scaling
+            screen.style.maxWidth = '100%';
+            screen.style.maxHeight = '100%';
+        }
+    });
     // Start the frame request cycle
     requestFrame();
     </script>

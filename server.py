@@ -2,6 +2,7 @@ import time
 import threading
 import io
 import base64
+import argparse
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 from mss import mss
@@ -24,9 +25,17 @@ frame_lock = threading.Lock()
 screen_width = None
 screen_height = None
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+# Command-line argument parser
+parser = argparse.ArgumentParser(description="Screen sharing server with optional Web UI.")
+parser.add_argument('--webui', action='store_true', help="Run the server with Web UI.")
+args = parser.parse_args()
+
+if args.webui:
+    @app.route("/")
+    def index():
+        return render_template("index.html")
+else:
+	print("starting in non ui mode")
 
 def capture_screen():
     global current_frame, screen_width, screen_height
