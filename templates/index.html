@@ -590,6 +590,10 @@
 		    document.getElementById('connectionStatus').classList.add('visible');
  			screen.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
             clearAllKeyIndicators();
+              if (window.top !== window.self) {
+                // Send a message to the parent window to reload
+                window.top.postMessage('reload', '*');
+              }
     	} else {
 		    resetViewState();
 		    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
@@ -612,6 +616,10 @@
 		            'Connection failed. Please refresh the page.';
 		        document.getElementById('connectionStatus').classList.add('visible');
             	clearAllKeyIndicators();
+                if (window.top !== window.self) {
+                  // Send a message to the parent window to reload
+                  window.top.postMessage('reload', '*');
+                }
 		    }
 		}
     }

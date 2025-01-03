@@ -147,12 +147,13 @@ parser = argparse.ArgumentParser(description="Screen sharing server with optiona
 parser.add_argument('--webui', action='store_true', help="Run the server with Web UI.")
 args = parser.parse_args()
 
-if args.webui:
-    @app.route("/")
-    def index():
+@app.route("/")
+def index():
+    if args.webui:
         return render_template("index.html")
-else:
-	print("starting in non ui mode")
+    else:
+        return render_template("client.html")
+        print("starting in non ui mode")
 
 
 
