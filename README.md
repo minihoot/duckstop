@@ -13,6 +13,8 @@
 <p></p>
 - [x] Scrolling
 <p></p>
+- [x] Chunked Video System (CVS)
+<p></p>
 - [~] Mouse capture applications (3D based games that lock the mouse)
 <p></p>
 - [N] Clipboard

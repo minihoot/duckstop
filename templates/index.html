@@ -353,6 +353,7 @@
     const altButton = document.getElementById('alt_key');
     const keyIndicator = document.getElementById('keyIndicator');
 	let isDisconnected = false; // A flag to track if we've disconnected
+	const ctrlAltDelButton = document.getElementById('ctrl_alt_del');
 
         let activeKeys = new Set();
         const slidingKeysContainer = document.getElementById('slidingKeysContainer');
@@ -382,6 +383,51 @@
                 keyElement.classList.add('active');
             });
         }
+
+        ctrlAltDelButton.addEventListener('mousedown', () => {
+            if (socket && socket.connected) {
+                // Press all three keys
+                socket.emit('keyboard_event', { key: 'ControlLeft', action: 'press' });
+                socket.emit('keyboard_event', { key: 'AltLeft', action: 'press' });
+                socket.emit('keyboard_event', { key: 'Delete', action: 'press' });
+                
+                // Update button state
+                ctrlAltDelButton.classList.add('active');
+                
+                // Create visual indicators for the key combination
+                createOrUpdateKeyIndicator('CTRL+ALT+DEL');
+            }
+        });
+
+        ctrlAltDelButton.addEventListener('mouseup', () => {
+            if (socket && socket.connected) {
+                // Release all three keys
+                socket.emit('keyboard_event', { key: 'ControlLeft', action: 'release' });
+                socket.emit('keyboard_event', { key: 'AltLeft', action: 'release' });
+                socket.emit('keyboard_event', { key: 'Delete', action: 'release' });
+                
+                // Update button state
+                ctrlAltDelButton.classList.remove('active');
+                
+                // Remove the visual indicator
+                removeKeyIndicator('CTRL+ALT+DEL');
+            }
+        });
+
+        ctrlAltDelButton.addEventListener('mouseleave', () => {
+            if (socket && socket.connected) {
+                // Release all keys if the mouse leaves the button
+                socket.emit('keyboard_event', { key: 'ControlLeft', action: 'release' });
+                socket.emit('keyboard_event', { key: 'AltLeft', action: 'release' });
+                socket.emit('keyboard_event', { key: 'Delete', action: 'release' });
+                
+                // Update button state
+                ctrlAltDelButton.classList.remove('active');
+                
+                // Remove the visual indicator
+                removeKeyIndicator('CTRL+ALT+DEL');
+            }
+        });
 
         function removeKeyIndicator(keyName) {
             const keyElement = document.querySelector(`[data-key="${keyName}"]`);
@@ -593,27 +639,67 @@
         const receiveTime = performance.now();
         const latency = receiveTime - lastRequestTime;
 
-        if (data && data.img) {
-            screen.src = 'data:image/jpeg;base64,' + data.img;
+        if (!data) {
+            console.error('Invalid screen update data received');
+            frameRequestPending = false;
+            setTimeout(requestFrame, 1000);
+            return;
+        }
+
+        if (data.type === 'full') {
+            // Handle full frame update
+            screen.src = 'data:image/jpeg;base64,' + data.data;
             if (!originalWidth && data.width) {
                 originalWidth = data.width;
                 originalHeight = data.height;
             }
+        } else if (data.type === 'partial' && data.chunks.length > 0) {
+            // Handle partial updates using chunks
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // If we don't have an existing image, request a full frame
+            if (!screen.src || screen.src.endsWith('transparent.png')) {
+                requestFrame();
+                return;
+            }
 
-            lastFrameTimestamp = data.timestamp;
-            frameRequestPending = false;
+            // Create temporary image to get current screen state
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
 
-            const frameTime = performance.now() - receiveTime;
-            updatePerformanceStats(latency, frameTime);
-
-            clearTimeout(connectionTimeout);
-
-            setTimeout(requestFrame, 1000 / parseInt(document.getElementById('frame_rate').value));
-        } else {
-            console.error('Invalid screen update data received');
-            frameRequestPending = false;
-            setTimeout(requestFrame, 1000);
+                // Apply all chunks
+                let chunksProcessed = 0;
+                data.chunks.forEach(chunk => {
+                    const chunkImg = new Image();
+                    chunkImg.onload = () => {
+                        ctx.drawImage(chunkImg, chunk.position[0], chunk.position[1]);
+                        chunksProcessed++;
+                        
+                        // When all chunks are processed, update the screen
+                        if (chunksProcessed === data.chunks.length) {
+                            screen.src = canvas.toDataURL('image/jpeg', 0.9);
+                        }
+                    };
+                    chunkImg.src = 'data:image/jpeg;base64,' + chunk.data;
+                });
+            };
+            img.src = screen.src;
         }
+
+        lastFrameTimestamp = data.timestamp;
+        frameRequestPending = false;
+
+        const frameTime = performance.now() - receiveTime;
+        updatePerformanceStats(latency, frameTime);
+
+        clearTimeout(connectionTimeout);
+        
+        // Schedule next frame request
+        setTimeout(requestFrame, 1000 / parseInt(document.getElementById('frame_rate').value));
     }
 
     function requestFrame() {
@@ -762,7 +848,7 @@
             socket.emit('mouse_event', {
                 type: 'scroll',
                 deltaY: e.deltaY > 0 ? -1 : 1,
-                deltaX: e.deltaX > 0 ? -1 : 1,
+                deltaX: 0, // Only send horizontal scroll if explicitly needed
                 ...coords
             });
         }
