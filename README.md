@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/aarongamingdev/duckstop/refs/heads/main/logo.png" alt="Quack Quack Quack Quack Quack Quack Quack Quack Quack Quack Quack " width="256" height="256">
+  <img src="https://raw.githubusercontent.com/aarongamingdev/duckstop/refs/heads/main/logo.png" alt="Quack Quack Quack Quack Quack Quack Quack Quack Quack Quack Quack" width="256" height="256">
 </p>
 <h1 align="center">Duckstop</h1>
-<p align="center">Easy simple Remote Desktop program made in Python</p>
+<p align="center">Easy, simple Remote Desktop Program written in Python</p>
 
 <h1>Features:</h1>
 - [x] Basic display functionality
 <p></p>
-- [x] Keybord input
+- [x] Keyboard input
 <p></p>
 - [x] Mouse input with drag
 <p></p>
@@ -23,8 +23,10 @@
 <p></p>
 
 N = Next
-~ = Dont know is possible
+~ = Don't know if it is possible
+x = Done
 
 <h1>About:</h1>
-<p>Duckstop is what i'd call a remote desktop protocol of its own written in python that has a very functional web client at the moment, This project was originally going to be a simple little project but i have expanded on it and with the help of LeGamermc i was able to get most of the inputs working, </p>
-<p><strong>WARNING: if you plan on using the web ui please make sure on the argument to start the webserver to type on the end --webui</strong><p>
+<p>Duckstop is what I'd call a remote desktop protocol of it's own, written in Python. It has a very functional web client.
+This project was originally going to be a simple little project but I have expanded on it and with the help of LeGamermc I was able to get most of the inputs working. </p>
+<p><strong>WARNING: If you plan on using the Web UI please make sure on the argument to start the webserver to type on the end --webui</strong><p>
